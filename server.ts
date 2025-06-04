@@ -1,32 +1,46 @@
-import mongoose from 'mongoose'
-import express from 'express'
+import express, { Request, Response } from 'express'
 import dotenv from 'dotenv'
+import cors from 'cors'
+import { clerkClient, clerkMiddleware, getAuth } from '@clerk/express'
+
 dotenv.config()
 
-const MONGO_CONN_STRING = process.env.MONGODB_CONN_STRING
+// TODO: Bring back DB connection functionality.
 
-if (!MONGO_CONN_STRING) throw new Error('Error loading .env file')
-
-mongoose
-  .connect(MONGO_CONN_STRING)
-  .then(() => {
-    console.log('DB connected')
-  })
-  .catch((err) => {
-    console.log(err)
-  })
-
-export const db = mongoose.connection
-process.on('SIGINT', () => {
-  db.close().then(() => {
-    console.log('MongoDB connection disconnected')
-    process.exit(0)
-  })
-})
+const PORT = process.env.PORT || 8080
+const REMOTE_ORIGIN = process.env.ORIGIN || 'http://localhost:5173'
 
 const app = express()
 
-app.listen(8001, () => {
-  db.on('error', console.error.bind(console, 'MongoDB connection error:'))
-  console.log(`Server is running on port 8001`)
+app.use(
+  cors({
+    origin: REMOTE_ORIGIN
+  })
+)
+app.use(clerkMiddleware())
+
+// TODO: Add routes and controller files.
+
+// Route is unprotected.
+app.get('/hello-world', (req: Request, res: Response) => {
+  res.json({ msg: 'Hello, World' })
+})
+
+// Uses getAuth to protect a route via authorization status.
+app.get('/protected', async (req: Request, res: Response) => {
+  // TODO: Convert to middleware along with the clerkMiddleware function.
+  const { userId } = getAuth(req)
+
+  if (!userId) {
+    res.status(401).json({ error: 'User not authenticated' })
+    return
+  }
+
+  const user = await clerkClient.users.getUser(userId)
+
+  res.json({ user, msg: 'Protected route hit' })
+})
+
+app.listen(PORT, () => {
+  console.log(`Server is running on port: ${PORT}`)
 })
