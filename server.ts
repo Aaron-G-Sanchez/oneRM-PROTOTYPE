@@ -1,7 +1,9 @@
 import express, { Request, Response } from 'express'
 import dotenv from 'dotenv'
 import cors from 'cors'
-import { clerkClient, clerkMiddleware, getAuth } from '@clerk/express'
+import { clerkClient, clerkMiddleware } from '@clerk/express'
+
+import { ValidateUser } from './middleware/ErrorHandling.middleware'
 
 dotenv.config()
 
@@ -17,6 +19,7 @@ app.use(
     origin: REMOTE_ORIGIN
   })
 )
+
 app.use(clerkMiddleware())
 
 // TODO: Add routes and controller files.
@@ -27,16 +30,10 @@ app.get('/hello-world', (req: Request, res: Response) => {
 })
 
 // Uses getAuth to protect a route via authorization status.
-app.get('/protected', async (req: Request, res: Response) => {
-  // TODO: Convert to middleware along with the clerkMiddleware function.
-  const { userId } = getAuth(req)
+app.get('/protected', ValidateUser, async (req: Request, res: Response) => {
+  const { id } = req.user!
 
-  if (!userId) {
-    res.status(401).json({ error: 'User not authenticated' })
-    return
-  }
-
-  const user = await clerkClient.users.getUser(userId)
+  const user = await clerkClient.users.getUser(id)
 
   res.json({ user, msg: 'Protected route hit' })
 })
