@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express'
 import dotenv from 'dotenv'
 import cors from 'cors'
 import { clerkClient, clerkMiddleware } from '@clerk/express'
+import { verifyWebhook } from '@clerk/express/webhooks'
 
 import { ValidateUser } from './middleware/ErrorHandling.middleware'
 
@@ -37,6 +38,27 @@ app.get('/protected', ValidateUser, async (req: Request, res: Response) => {
 
   res.json({ user, msg: 'Protected route hit' })
 })
+
+// WEBHOOK ROUTE
+app.post(
+  '/api/webhooks',
+  express.raw({ type: 'application/json' }),
+  async (req: Request, res: Response) => {
+    try {
+      const event = await verifyWebhook(req)
+
+      console.log(event.data)
+
+      // TODO: Do something with payload
+      // e.g. - Add new user to database.
+
+      res.send('Webhook received')
+    } catch (err) {
+      console.error('Error verifying webhook:', err)
+      res.status(400).json({ msg: 'Error verifying webhook.' })
+    }
+  }
+)
 
 app.listen(PORT, () => {
   console.log(`Server is running on port: ${PORT}`)
